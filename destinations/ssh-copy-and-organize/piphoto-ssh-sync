@@ -65,7 +65,7 @@ while IFS= read -r -d '' file; do
         # Create a remote directory if we think we need to
         if [ "$LAST_CREATED" != "$remote_path" ]; then
             echo "Creating remote path $remote_path"
-            ssh "$dest_host" "mkdir -p $remote_path" < /dev/null
+            ssh "$dest_host" "mkdir -p '$remote_path'" < /dev/null
             LAST_CREATED="$remote_path"
         fi
 

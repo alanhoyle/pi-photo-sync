@@ -1,5 +1,5 @@
 #!/bin/bash
-set -uo pipefail
+set -euo pipefail
 IFS=$'\n\t'
 
 if [ -e /sys/devices/platform/leds/leds/PWR ]; then
@@ -15,6 +15,21 @@ if [ -e /etc/piphoto.conf ] ; then
 else
     >&2 echo "Could not read configuration file. Please update /etc/piphoto.conf"
     exit 1
+fi
+
+# Hook stubs — no-ops unless hook_file is set in /etc/piphoto.conf.
+# hook_start      (no args)
+# hook_complete   exit_code
+hook_start()    { :; }
+hook_complete() { :; }
+
+if [ -n "${hook_file:-}" ]; then
+    if [ ! -f "${hook_file}" ]; then
+        >&2 echo "hook_file not found: ${hook_file}"
+        exit 1
+    fi
+    # shellcheck source=/dev/null
+    source "${hook_file}"
 fi
 
 function indicate_error {
@@ -36,7 +51,8 @@ sudo sh -c "echo timer > ${GREEN_LED}/trigger"
 
 # Indicate error status if the script is interrupted
 function interrupted {
-    >&2 "piphoto interrupted, exiting..."
+    >&2 echo "piphoto interrupted, exiting..."
+    hook_complete 1
     indicate_error
     exit 1
 }
@@ -53,11 +69,13 @@ if [ -z "${sync_command:-}" ]; then
 fi
 
 # Run the sync
+hook_start
 set +e
 su - "$run_as_user" -c "$sync_command"
 sync_status=$?
 set -e
 
+hook_complete "${sync_status}"
 if [ $sync_status -eq 0 ] ; then
     indicate_success
 else

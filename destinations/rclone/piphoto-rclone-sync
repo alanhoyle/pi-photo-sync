@@ -1,0 +1,142 @@
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+
+DEBUG=""
+RM_AFTER_SYNC=""
+HOOK_FILE=""
+
+function show_usage {
+    echo "Usage: $(basename "$0") [Options] DIRECTORY"
+    echo "  -r REMOTE   The rclone remote name (e.g., 'remote', without trailing colon)"
+    echo "  -p PATH     The remote path to upload to"
+    echo "  -H FILE     Optional hook script sourced for display/notification support"
+    echo "  -d          Debug output"
+    echo "  -x          Remove file after successful upload"
+    echo "  -h          Show this help"
+    echo "  DIRECTORY   The directory to scan for files to upload"
+}
+
+# Hook stubs — no-ops unless overridden by a hook script (-H).
+# hook_start      mount_point dest_path
+# hook_file_begin filepath
+# hook_file_done  filepath remote_dest
+# hook_file_error filepath exit_code
+# hook_complete   files_synced files_failed
+hook_start()      { :; }
+hook_file_begin() { :; }
+hook_file_done()  { :; }
+hook_file_error() { :; }
+hook_complete()   { :; }
+
+rclone_remote=""
+dest_path=""
+
+while getopts "h?dxr:p:H:" opt; do
+    case "$opt" in
+    d)
+        DEBUG=yes
+        ;;
+    x)
+        RM_AFTER_SYNC=yes
+        ;;
+    r)  rclone_remote="${OPTARG}"
+        ;;
+    p)  dest_path="${OPTARG}"
+        ;;
+    H)  HOOK_FILE="${OPTARG}"
+        ;;
+    h | \?)
+        show_usage
+        exit 0
+        ;;
+    esac
+done
+
+shift $((OPTIND-1)); OPTIND=1
+
+if [ -n "${HOOK_FILE}" ]; then
+    if [ ! -f "${HOOK_FILE}" ]; then
+        >&2 echo "Hook file not found: ${HOOK_FILE}"
+        exit 1
+    fi
+    # shellcheck source=/dev/null
+    source "${HOOK_FILE}"
+fi
+
+if [ -z "${rclone_remote:-}" ]; then
+    >&2 echo "rclone_remote not set. Use -r to specify the remote name."
+    exit 1
+fi
+
+if [ -z "${dest_path:-}" ]; then
+    >&2 echo "dest_path not set. Use -p to specify the remote path."
+    exit 1
+fi
+
+if [ "${DEBUG}" == "yes" ]; then
+    echo "Enabling debug output"
+    set -x
+fi
+
+mount_point=${1:-}
+if [ -z "${mount_point}" ]; then
+    >&2 echo "ERROR: No directory provided!"
+    show_usage
+    exit 1
+fi
+
+hook_start "${mount_point}" "${dest_path}"
+
+# Iterate over the images in the directory
+LAST_CREATED=""
+files_synced=0
+files_failed=0
+while IFS= read -r -d '' file; do
+    echo "Processing $file"
+    hook_file_begin "${file}"
+
+    # Extract the date it was taken
+    date=$(exiftool -T -createdate -d  "%Y-%m-%d" "${file}" || true)
+    year=$(date --date="${date}" "+%Y" || true)
+    remote_path="${rclone_remote}:${dest_path}/${year}/${date}"
+
+    if [ -z "$date" ] || [ -z "$year" ] || [ "$date" == "-" ] ; then
+        >&2 echo "Could not infer date from file \"${file}\""
+        hook_file_error "${file}" 1
+        (( files_failed++ )) || true
+    else
+        # Create a remote directory if we think we need to
+        if [ "$LAST_CREATED" != "$remote_path" ]; then
+            echo "Ensuring remote path $remote_path exists"
+            rclone mkdir "$remote_path"
+            LAST_CREATED="${remote_path}"
+        fi
+
+        # Copy the file to the remote directory
+        copied=0
+        rclone copyto "$file" "$remote_path/$(basename "$file")" || copied=$?
+        if [ "$copied" -ne 0 ] ; then
+            >&2 echo "Could not copy $file to $remote_path"
+            hook_file_error "${file}" "${copied}"
+            (( files_failed++ )) || true
+        else
+            echo "Copied $file to $remote_path"
+            hook_file_done "${file}" "${remote_path}/$(basename "${file}")"
+            (( files_synced++ )) || true
+
+            if [ "${RM_AFTER_SYNC}" == "yes" ]; then
+                echo "Removing local file from card..."
+                sudo rm -v "${file}"
+            fi
+        fi
+    fi
+
+done< <(find "$mount_point" -type d \( \
+        -name ".Trashes" \
+        -o -name ".Spotlight-V100" \
+        -o -name ".fseventsd" \
+        \) \
+        -prune -o -type f -print0)
+
+hook_complete "${files_synced}" "${files_failed}"

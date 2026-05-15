@@ -1,0 +1,88 @@
+#!/bin/bash
+# piphoto-rclone-sync example configuration file
+# Fill this out and put it in /etc/piphoto.rclone.conf
+#
+# Before using any remote below, configure it with:
+#   rclone config
+# Then verify it works:
+#   rclone ls <remote-name>:
+#
+# NOTE: rclone_remote should NOT include a trailing colon —
+# the sync script appends one when building the destination path.
+
+# The rclone executable.
+# If rclone is not on the user's PATH, it must be the full path.
+rclone_executable=rclone
+
+# The rclone remote name — must match a remote in your rclone config.
+# See the examples below for common providers.
+rclone_remote=myremote
+
+# The path in the remote storage to store the photos in.
+# Photos are organised under this path as YYYY/YYYY-MM-DD/filename.
+dest_path=photos
+
+# Additional rclone options (if any).
+rclone_options=""
+
+# -----------------------------------------------------------------------------
+# Remote examples — pick one, set rclone_remote/dest_path/rclone_options above.
+# Run `rclone config` to create the named remote interactively.
+# -----------------------------------------------------------------------------
+
+# --- Google Photos ---
+# rclone config type: google photos
+# Uploads into the "photos" album path. Note: Google Photos does not expose a
+# normal filesystem; rclone presents albums as directories.
+# Recommended: use Google Drive instead for a true folder hierarchy.
+#
+# rclone_remote=gphotos
+# dest_path=album/PiPhotoSync
+# rclone_options="--gphotos-read-only=false"
+
+# --- Google Drive ---
+# rclone config type: drive
+# Stores photos in My Drive under the given folder path.
+#
+# rclone_remote=gdrive
+# dest_path=Pictures/PiPhotoSync
+# rclone_options=""
+
+# --- Dropbox ---
+# rclone config type: dropbox
+# Stores photos under the given Dropbox folder.
+#
+# rclone_remote=dropbox
+# dest_path=Pictures/PiPhotoSync
+# rclone_options=""
+
+# --- OneDrive ---
+# rclone config type: onedrive
+# Works with personal OneDrive and OneDrive for Business.
+#
+# rclone_remote=onedrive
+# dest_path=Pictures/PiPhotoSync
+# rclone_options=""
+
+# --- SFTP ---
+# rclone config type: sftp
+# Copies photos to any SSH/SFTP server. Key-based auth is recommended on a Pi.
+# Set up passwordless login first: ssh-copy-id user@yourserver
+#
+# rclone_remote=myserver
+# dest_path=/home/user/photos/PiPhotoSync
+# rclone_options="--sftp-key-file=/home/pi/.ssh/id_rsa"
+
+# --- iCloud Drive (via WebDAV) ---
+# rclone config type: webdav
+#   url:  https://idmsa.apple.com/appleauth/auth  (WebDAV endpoint)
+#   vendor: other
+#   user: your Apple ID email
+#   pass: an app-specific password (generated at appleid.apple.com)
+# Note: iCloud WebDAV support is limited and may require an app-specific
+# password even with 2FA disabled. Full photo library access is not available;
+# only iCloud Drive folders are reachable this way.
+#
+# rclone_remote=icloud
+# dest_path=PiPhotoSync
+# rclone_options=""

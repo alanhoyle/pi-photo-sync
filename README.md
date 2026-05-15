@@ -19,8 +19,8 @@ The green led will start flashing as it is processed.
 
 Once complete, the led's will indicate success or failure:
 
-* :green_circle: A solid green indicates the job was successful
-* :red_circle: A blinking red indicates the job failed
+- :green_circle: A solid green indicates the job was successful
+- :red_circle: A blinking red indicates the job failed
 
 When you remove the sd card, the leds return to usual pi indicators.
 
@@ -32,10 +32,10 @@ The `sync_command` (see below) in the config is the command that is executed whe
 
 Here are other setups you may like:
 
-* [Copying and Organizing over SSH](destinations/ssh-copy-and-organize/README.md)
-* [Lightroom Classic on Mac OSX](destinations/osx-lightroom-classic/README.md)
-* [Copying and Organizing to Dropbox](destinations/dropbox/README.md)
-* ...more to come soon.
+- [Copying and Organizing over SSH](destinations/ssh-copy-and-organize/README.md)
+- [Lightroom Classic on Mac OSX](destinations/osx-lightroom-classic/README.md)
+- [Copying and Organizing to Dropbox](destinations/dropbox/README.md)
+- ...more to come soon.
 
 ## Installation
 
@@ -59,9 +59,9 @@ and edit it with your favorite editor.
 
 The variables that need to be set are:
 
-* **`mount_point`** - Where your sd card gets mounted (should match the point in the udev rules below.)
-* **`run_as_user`** - The user to run the sync program as.
-* **`sync_command`** - What command to run to sync the photos. (See _Destinations_ above).
+- **`mount_point`** - Where your sd card gets mounted (should match the point in the udev rules below.)
+- **`run_as_user`** - The user to run the sync program as.
+- **`sync_command`** - What command to run to sync the photos. (See _Destinations_ above).
 
 ## Notes Under The Hood
 
@@ -85,7 +85,7 @@ The install script creates the file `/etc/systemd/system/piphoto.service`. It in
 
 If you are using a different default user, or want to change any behavior, edit the script and then run:
 
-``` shell
+```shell
 systemctl daemon-reload
 ```
 
@@ -95,13 +95,13 @@ The install script also enables the service by default.
 
 Logs are accessible via journalctl:
 
-``` shell
+```shell
 journalctl -f -u piphoto.service
 ```
 
 You can fire the udev trigger without re-inserting the card with:
 
-``` shell
+```shell
 sudo udevadm trigger --action=add <device>
 ```
 
